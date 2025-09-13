@@ -8,16 +8,12 @@ import csv
 
 def sidebar():
     with st.sidebar:
-        # ========================= 챗봇 설정 ========================= 
-        st.subheader("🤖 챗봇 설정")
-
-        # api 선택
+        # 챗봇 선택
         api_choice = st.selectbox(
             "챗봇 선택",
             options=["Chatroom 1", "Chatroom 2", "Chatroom 3", "Chatroom 4"],
             help="사용할 챗봇을 선택하세요.",
         )
-        
         if api_choice == "Chatroom 1":
             st.session_state.api = st.secrets['GROQ_API_KEY_NO1']
         elif api_choice == "Chatroom 2":
@@ -31,74 +27,42 @@ def sidebar():
             return
         st.session_state.api_choice = api_choice
 
-        # 챗봇 종류 선택 
         col1, col2 = st.columns(2)
-        with col1:            
-            chatbot_model = st.radio(
-                "챗봇 모델",
-                options=["SLM", "LLM"],
-                help="사용할 챗봇 모델을 선택하세요.",
-            )
+        with col1:
+            chatbot_model = st.radio("챗봇 모델", options=["SLM", "LLM"])
             st.session_state.chatbot_model = chatbot_model
         with col2:
-            chatbot_mode = st.radio(
-                "챗봇 모드",
-                options=["성격", "질의응답"],
-                help="챗봇의 동작 방식을 선택하세요.",
-            )
+            chatbot_mode = st.radio("챗봇 모드", options=["성격", "질의응답"])
             st.session_state.chatbot_mode = chatbot_mode
 
-        # ========================= 식물 정보 설정 ========================= 
+        # 식물 정보
         st.divider()
         st.subheader("🌱 식물 정보 설정")
-
-        # 식물 종류
         plant_type = st.selectbox(
             "식물 종류",
-            options=["몬스테라", "가울테리아", "개운죽", "러브체인", "숙근이베리스", "시서스", 
-                     "스킨답서스", "아이비", "히포에스테스", "호야"],
-            help="해당 식물의 종류를 선택하세요.",
+            options=["몬스테라","가울테리아","개운죽","러브체인","숙근이베리스","시서스",
+                     "스킨답서스","아이비","히포에스테스","호야"],
         )
         st.session_state.plant_type = plant_type
 
         col3, col4 = st.columns(2)
         with col3:
-            # 식물 이름
-            plant_name = st.text_input("식물 이름", value="테리")
-            st.session_state.plant_name = plant_name
-
-            # 식물 환경
-            plant_env = st.selectbox(
-                "식물 환경",
-                options=["적절", "건조", "습함", "추움", "더움"],
-            )
-            st.session_state.plant_env = plant_env
-
+            st.session_state.plant_name = st.text_input("식물 이름", value="테리")
+            st.session_state.plant_env = st.selectbox("식물 환경", options=["적절", "건조", "습함", "추움", "더움"])
+            # 대화 기록 삭제
+            if st.button("대화 기록 삭제", type="secondary"):
+                st.session_state.messages = []
+                st.rerun()
         with col4:
-            # 식물 나이
-            plant_age = st.number_input(
-                "식물 나이",
-                min_value=0,
-                value=1,
-                step=1,
+            st.session_state.plant_age = st.number_input("식물 나이", min_value=0, value=1, step=1)
+            st.session_state.plant_personality = st.selectbox(
+                "식물 성격", options=["기쁨이", "슬픔이", "까칠이", "버럭이", "소심이"]
             )
-            st.session_state.plant_age = plant_age
+            # 📌 사이드바에 "사용법 다시 보기" 버튼 추가
+            if st.button("사용법 보기", type="secondary"):
+                st.session_state.show_guide = True
+                st.rerun()
 
-            # 식물 성격
-            plant_personality = st.selectbox(
-                "식물 성격",
-                options=["기쁨이", "슬픔이", "까칠이", "버럭이", "소심이"],
-                help="식물의 성격을 선택하세요.",
-            )
-            st.session_state.plant_personality = plant_personality
-
-        # 대화 기록 삭제 버튼
-        if st.button("대화 기록 삭제", type="secondary"):
-            st.session_state.messages = []
-            st.rerun()
-
-
-        # ========================= 설문 =========================
         st.divider()
         st.subheader("📝 설문")
         st.link_button("설문 참여하기", url="https://forms.gle/57TiK928X3CnsR5W6")
@@ -223,45 +187,64 @@ def get_chatbot_response(user_input: str) -> str:
     return result
 
 def chatbot():
+    # 세션 상태 초기화 (처음 페이지 로드 시)
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "show_guide" not in st.session_state:
+        st.session_state.show_guide = True
+
+    # === 사용법 안내 ===
+    if st.session_state.show_guide:
+        st.info(
+            """
+            PlanTy는 IoT 데이터를 기반으로 식물과 대화할 수 있는 챗봇 서비스입니다.
+
+            본 페이지는 PlanTy의 챗봇을 테스트할 수 있는 공간입니다. 
+
+            **사용법**
+            1. 왼쪽 사이드바에서 챗봇 모델, 식물 정보 등을 설정하세요.
+                - **SLM**: 소규모 언어 모델 (Small Language Model) -> 응답 속도 느림
+                - **LLM**: 대규모 언어 모델 (Large Language Model) -> 응답 속도 빠름
+                - **성격**: 식물 정보 설정에서 지정된 식물의 환경과 성격을 반영하여 답변
+                - **질의응답**: 식물과 관련된 질문에 답변
+                - 식물의 종류, 이름, 나이, 성격, 환경을 자유롭게 설정해보세요
+            2. 아래 입력창에 메시지를 입력하면 식물과 대화할 수 있어요.
+            3. 필요하면 사이드바에서 "대화 기록 삭제" 또는 "사용법 보기" 버튼을 눌러 초기화할 수 있어요.
+
+            **중요!**
+            - 사용중 오류가 발생했다면 챗봇을 Chatroom 1, 2, 3, 4로 변경해보세요.
+            - 새로고침을 하면 대화 기록이 초기화됩니다
+            - 사용을 완료했다면 사이드바 하단의 설문 참여하기를 눌러 **설문조사**를 완료해주세요!
+            """
+        )
+
     chat_container = st.container()
 
+    # 기존 메시지 표시
     with chat_container:
-        # 기존 메시지들 표시
-        for i, message in enumerate(st.session_state.messages):
-            if message["role"] == "user":
-                with st.chat_message("user"):
-                    st.write(message["content"])
-            else:
-                with st.chat_message("assistant"):
-                    st.write(message["content"])
-
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
 
     # 사용자 입력
     user_input = st.chat_input("메시지를 입력하세요...")
 
-
-    # 사용자가 메시지를 입력했을 때
     if user_input:
-        # 사용자 메시지를 세션에 추가
+        # 사용법 숨기기
+        st.session_state.show_guide = False
+
+        # 사용자 메시지 추가
         st.session_state.messages.append({"role": "user", "content": user_input})
-        
-        # 사용자 메시지 표시
         with chat_container:
             with st.chat_message("user"):
                 st.write(user_input)
-        
-        # 봇 응답 생성
+
         with st.spinner("생각 중..."):
-            time.sleep(1)  # 실제 응답을 기다리는 것처럼 보이게 하는 딜레이
             bot_response = get_chatbot_response(user_input)
-        
-        # 봇 응답을 세션에 추가
+
         st.session_state.messages.append({"role": "assistant", "content": bot_response})
-        
-        # 봇 응답 표시
         with chat_container:
             with st.chat_message("assistant"):
                 st.write(bot_response)
-        
-        # 페이지 새로고침으로 최신 메시지가 보이도록
+
         st.rerun()
